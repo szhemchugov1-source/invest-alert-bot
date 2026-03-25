@@ -68,15 +68,20 @@ def get_price(ticker):
 
 def load_state():
     if not os.path.exists(STATE_FILE):
-        return {
-            ticker: {
-                "levels": {level["key"]: False for level in config["levels"]},
+        state = {}
+
+        for ticker, config in WATCHLIST.items():
+            state[ticker] = {
+                "levels": {},
                 "tp": False,
                 "sl": False,
             }
-            for ticker, config in WATCHLIST.items():
-        }
-     
+
+            for level in config["levels"]:
+                state[ticker]["levels"][level["key"]] = False
+
+        return state
+
     import json
     with open(STATE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
