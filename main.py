@@ -61,6 +61,7 @@ LADDER_WEIGHTS = {
 }
 MIN_TRADE_USD = 1.50
 MIN_SHARES = 0.001
+MAX_OPEN_TRADES = 3
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -198,7 +199,15 @@ def check_entry_levels(state, ticker, config, current_price):
         risk_usd = amount_usd * 0.15
         risk_percent = (risk_usd / available_cash) * 100
         cash_after_trade = available_cash - amount_usd
+        
+        open_trades = sum(
+            1 for a in state["assets"].values()
+            if any(a["levels"].values())
+        )
 
+        if open_trades >= MAX_OPEN_TRADES:
+        continue
+        
         if amount_usd < MIN_TRADE_USD:
             continue
             
