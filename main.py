@@ -270,7 +270,7 @@ def main():
    changed_any = False
 
    if process_telegram_commands(state):
-    changed_any = True
+      changed_any = True
     for ticker, config in WATCHLIST.items():
         try:
             current_price = get_price(ticker)
