@@ -83,7 +83,6 @@ def process_telegram_commands(state):
     offset = last_update_id + 1 if last_update_id is not None else None
 
     updates = get_updates(offset=offset)
-
     changed = False
 
     for update in updates:
@@ -103,11 +102,9 @@ def process_telegram_commands(state):
         if text.startswith("/cash"):
             parts = text.split()
 
-            # Поддержка формата /cash 20
             if len(parts) == 2:
                 raw_value = parts[1]
             else:
-                # Поддержка формата /cash20
                 raw_value = text.replace("/cash", "", 1).strip()
 
             try:
