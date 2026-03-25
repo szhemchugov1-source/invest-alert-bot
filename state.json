@@ -1,0 +1,42 @@
+{
+  "available_cash": 20,
+  "last_update_id": 603961795,
+  "assets": {
+    "QQQM": {
+      "levels": {
+        "lvl1": false,
+        "lvl2": false,
+        "lvl3": false
+      },
+      "tp": false,
+      "sl": false
+    },
+    "NVDA": {
+      "levels": {
+        "lvl1": false,
+        "lvl2": false,
+        "lvl3": false
+      },
+      "tp": false,
+      "sl": false
+    },
+    "PLTR": {
+      "levels": {
+        "lvl1": false,
+        "lvl2": false,
+        "lvl3": false
+      },
+      "tp": false,
+      "sl": false
+    },
+    "RKLB": {
+      "levels": {
+        "lvl1": false,
+        "lvl2": false,
+        "lvl3": false
+      },
+      "tp": false,
+      "sl": false
+    }
+  }
+}
