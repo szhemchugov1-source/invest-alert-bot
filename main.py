@@ -162,6 +162,7 @@ def main():
         raise RuntimeError("Не задан TELEGRAM_CHAT_ID")
 
     state = load_state()
+    send_message("🤖 Бот проверяет рынок...")
     changed_any = False
 
     for ticker, config in WATCHLIST.items():
