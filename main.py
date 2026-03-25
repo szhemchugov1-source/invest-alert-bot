@@ -59,7 +59,7 @@ LADDER_WEIGHTS = {
     "lvl2": 0.30,
     "lvl3": 0.40,
 }
-
+MIN_TRADE_USD = 1.50
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
