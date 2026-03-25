@@ -206,7 +206,7 @@ def check_entry_levels(state, ticker, config, current_price):
         )
 
         if open_trades >= MAX_OPEN_TRADES:
-        continue
+            continue
         
         if amount_usd < MIN_TRADE_USD:
             continue
