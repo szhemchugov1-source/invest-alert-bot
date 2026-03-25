@@ -60,6 +60,7 @@ LADDER_WEIGHTS = {
     "lvl3": 0.40,
 }
 MIN_TRADE_USD = 1.50
+MIN_SHARES = 0.001
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -193,10 +194,14 @@ def check_entry_levels(state, ticker, config, current_price):
 
         amount_usd = asset_budget * LADDER_WEIGHTS[level_key]
         shares_est = amount_usd / current_price if current_price > 0 else 0
+        shares_est = round(shares_est, 3)
         trade_percent = (amount_usd / available_cash * 100) if available_cash > 0 else 0
         cash_after_trade = available_cash - amount_usd
 
         if amount_usd < MIN_TRADE_USD:
+            continue
+            
+        if shares_est < MIN_SHARES:    
             continue
 
         if current_price <= trigger_price and not asset_state["levels"][level_key]:
@@ -210,7 +215,7 @@ def check_entry_levels(state, ticker, config, current_price):
                 f"Сумма покупки: ${amount_usd:.2f}\n"
                 f"Доля сделки от кэша: {trade_percent:.2f}%\n"
                 f"Остаток кэша после входа: ${cash_after_trade:.2f}\n"
-                f"Примерно акций: {shares_est:.4f}\n"
+                f"Примерно акций: {shares_est:.3f}\n"
                 f"Действие: купить / ждать / пропустить"
             )
             asset_state["levels"][level_key] = True
