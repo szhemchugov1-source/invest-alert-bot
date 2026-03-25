@@ -37,7 +37,7 @@ WATCHLIST = {
         "name": "Rocket Lab",
         "entry_price": 67.23,
         "levels": [
-            {"key": "lvl1", "price": 64.95, "label": "1-й вход"},
+            {"key": "lvl1", "price": 100.00, "label": "1-й вход"},
             {"key": "lvl2", "price": 62.90, "label": "2-й вход"},
             {"key": "lvl3", "price": 61.50, "label": "3-й вход"},
         ],
