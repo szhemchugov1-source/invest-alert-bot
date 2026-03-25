@@ -206,26 +206,26 @@ def check_entry_levels(state, ticker, config, current_price):
             continue
 
         if current_price <= trigger_price and not asset_state["levels"][level_key]:
-        send_message(
-            f"🚨 Сигнал по системе\n"
-            f"{config['name']} ({ticker})\n"
-            f"Уровень: {label}\n"
-            f"Текущая цена: {current_price:.2f}\n"
-            f"Цена уровня: {trigger_price:.2f}\n"
-            f"Кэш в расчёте: ${available_cash:.2f}\n"
-            f"Сумма покупки: ${amount_usd:.2f}\n"
-            f"Примерно акций: {shares_est:.3f}\n"
-            f"Риск сделки: ${risk_usd:.2f} ({risk_percent:.2f}%)\n"
-            f"Кэш после сделки: ${cash_after_trade:.2f}\n"
-            f"Действие: купить / ждать / пропустить"
-        )
+            send_message(
+                f"🚨 Сигнал по системе\n"
+                f"{config['name']} ({ticker})\n"
+                f"Уровень: {label}\n"
+                f"Текущая цена: {current_price:.2f}\n"
+                f"Цена уровня: {trigger_price:.2f}\n"
+                f"Кэш в расчёте: ${available_cash:.2f}\n"
+                f"Сумма покупки: ${amount_usd:.2f}\n"
+                f"Примерно акций: {shares_est:.3f}\n"
+                f"Риск сделки: ${risk_usd:.2f} ({risk_percent:.2f}%)\n"
+                f"Кэш после сделки: ${cash_after_trade:.2f}\n"
+                f"Действие: купить / ждать / пропустить"
+            )
             asset_state["levels"][level_key] = True
             changed = True
 
         elif current_price > trigger_price and asset_state["levels"][level_key]:
             asset_state["levels"][level_key] = False
             changed = True
-
+            
     return changed
 
 
