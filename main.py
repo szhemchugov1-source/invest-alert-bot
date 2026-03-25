@@ -205,7 +205,7 @@ def check_entry_levels(state, ticker, config, current_price):
         if shares_est < MIN_SHARES:    
             continue
 
-        if current_price <= trigger_price and not asset_state["levels"]
+        if current_price <= trigger_price and not asset_state["levels"][level_key]:
         send_message(
             f"🚨 Сигнал по системе\n"
             f"{config['name']} ({ticker})\n"
