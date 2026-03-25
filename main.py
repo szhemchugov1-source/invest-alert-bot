@@ -193,19 +193,25 @@ def check_entry_levels(state, ticker, config, current_price):
 
         amount_usd = asset_budget * LADDER_WEIGHTS[level_key]
         shares_est = amount_usd / current_price if current_price > 0 else 0
-
-        if current_price <= trigger_price and not asset_state["levels"][level_key]:
-            send_message(
-                f"🚨 Сигнал по системе\n"
-                f"{config['name']} ({ticker})\n"
-                f"Уровень: {label}\n"
-                f"Текущая цена: {current_price:.2f}\n"
-                f"Цена уровня: {trigger_price:.2f}\n"
-                f"Кэш в расчёте: ${available_cash:.2f}\n"
-                f"Сумма покупки: ${amount_usd:.2f}\n"
-                f"Примерно акций: {shares_est:.4f}\n"
-                f"Действие: купить / ждать / пропустить"
-            )
+        trade_percent = (amount_usd / available_cash * 100) if available_cash > 0 else 0
+        cash_after_trade = available_cash - amount_usd
+        
+        if amount_usd < MIN_TRADE_USD:
+            continue
+        if current_price <= trigger_price and not asset_state["levels"]
+        [send_message(
+    f"🚨 Сигнал по системе\n"
+    f"{config['name']} ({ticker})\n"
+    f"Уровень: {label}\n"
+    f"Текущая цена: {current_price:.2f}\n"
+    f"Цена уровня: {trigger_price:.2f}\n"
+    f"Кэш в расчёте: ${available_cash:.2f}\n"
+    f"Сумма покупки: ${amount_usd:.2f}\n"
+    f"Доля сделки от кэша: {trade_percent:.2f}%\n"
+    f"Остаток кэша после входа: ${cash_after_trade:.2f}\n"
+    f"Примерно акций: {shares_est:.4f}\n"
+    f"Действие: купить / ждать / пропустить"
+)
             asset_state["levels"][level_key] = True
             changed = True
 
