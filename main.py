@@ -162,10 +162,9 @@ def main():
         raise RuntimeError("Не задан TELEGRAM_CHAT_ID")
 
     state = load_state()
-    send_message("🤖 Бот проверяет рынок...")
     changed_any = False
 
-    for ticker, config in WATCHLIST.items():
+for ticker, config in WATCHLIST.items():
     try:
         current_price = get_price(ticker)
         print(f"{ticker}: {current_price:.2f}")
@@ -173,9 +172,9 @@ def main():
         send_message(f"⚠️ Ошибка получения цены {ticker}: {e}")
         continue
 
-        if check_entry_levels(state, ticker, config, current_price):
+    if check_entry_levels(state, ticker, config, current_price):
             changed_any = True
-        if check_tp_sl(state, ticker, config, current_price):
+    if check_tp_sl(state, ticker, config, current_price):
             changed_any = True
 
     if changed_any:
