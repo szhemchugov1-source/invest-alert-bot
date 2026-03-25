@@ -263,11 +263,12 @@ def main():
     if not CHAT_ID:
         raise RuntimeError("Не задан TELEGRAM_CHAT_ID")
 
-   state = load_state()
-   changed_any = False
+    state = load_state()
+    changed_any = False
 
-   if process_telegram_commands(state):
-      changed_any = True
+    if process_telegram_commands(state):
+        changed_any = True
+
     for ticker, config in WATCHLIST.items():
         try:
             current_price = get_price(ticker)
