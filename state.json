@@ -31,7 +31,7 @@
     },
     "RKLB": {
       "levels": {
-        "lvl1": true,
+        "lvl1": false,
         "lvl2": false,
         "lvl3": false
       },
