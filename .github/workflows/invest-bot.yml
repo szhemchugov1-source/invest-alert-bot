@@ -31,13 +31,14 @@ jobs:
         run: python main.py
 
       - name: Commit state if exists
-  run: |
-    if [ -f state.json ]; then
-      git config user.name "github-actions[bot]"
-      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      git add state.json
-      git diff --cached --quiet || git commit -m "Update bot state"
-      git push
-    else
-      echo "No state.json yet"
-    fi
+        shell: bash
+        run: |
+          if [ -f state.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state.json
+            git diff --cached --quiet || git commit -m "Update bot state"
+            git push
+          else
+            echo "No state.json yet"
+          fi
