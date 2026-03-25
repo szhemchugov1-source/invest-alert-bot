@@ -125,11 +125,11 @@ def check_tp_sl(state, ticker, config, current_price):
     if current_price >= tp_price and not state[ticker]["tp"]:
         send_message(
             f"💰 ФИКСАЦИЯ ПРИБЫЛИ\n"
-f"Действие: зафиксировать прибыль\n"
 f"{config['name']} ({ticker})\n"
 f"Текущая цена: {current_price:.2f}\n"
 f"Цель +20%: {tp_price:.2f}\n"
-f"Базовая цена: {entry_price:.2f}"
+f"Базовая цена: {entry_price:.2f}\n"
+f"Действие: зафиксировать прибыль"
         )
         state[ticker]["tp"] = True
         changed = True
@@ -140,11 +140,11 @@ f"Базовая цена: {entry_price:.2f}"
     if current_price <= sl_price and not state[ticker]["sl"]:
         send_message(
             f"🛑 СТОП ЛОСС\n"
-            f"{config['name']} ({ticker})\n"
-            f"Текущая цена: {current_price:.2f}\n"
-            f"Стоп -15%: {sl_price:.2f}\n"
-            f"Базовая цена: {entry_price:.2f}\n"
-            f"Действие: продать или сократить позицию"
+f"{config['name']} ({ticker})\n"
+f"Текущая цена: {current_price:.2f}\n"
+f"Стоп -15%: {sl_price:.2f}\n"
+f"Базовая цена: {entry_price:.2f}\n"
+f"Действие: продать или сократить позицию"
         )
         state[ticker]["sl"] = True
         changed = True
