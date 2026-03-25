@@ -169,17 +169,18 @@ def main():
     state = load_state()
     changed_any = False
 
-for ticker, config in WATCHLIST.items():
-    try:
-        current_price = get_price(ticker)
-        print(f"{ticker}: {current_price:.2f}")
-    except Exception as e:
-        send_message(f"⚠️ Ошибка получения цены {ticker}: {e}")
-        continue
+    for ticker, config in WATCHLIST.items():
+        try:
+            current_price = get_price(ticker)
+            print(f"{ticker}: {current_price:.2f}")
+        except Exception as e:
+            send_message(f"⚠️ Ошибка получения цены {ticker}: {e}")
+            continue
 
-    if check_entry_levels(state, ticker, config, current_price):
+        if check_entry_levels(state, ticker, config, current_price):
             changed_any = True
-    if check_tp_sl(state, ticker, config, current_price):
+
+        if check_tp_sl(state, ticker, config, current_price):
             changed_any = True
 
     if changed_any:
