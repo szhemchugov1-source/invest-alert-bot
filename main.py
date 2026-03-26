@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import yfinance as yf
 
@@ -37,10 +38,10 @@ WATCHLIST = {
         "name": "Rocket Lab",
         "entry_price": 67.23,
         "levels": [
-    {"key": "lvl1", "price": 68.5, "label": "1-й вход"},
-    {"key": "lvl2", "price": 65.0, "label": "2-й вход"},
-    {"key": "lvl3", "price": 60.0, "label": "3-й вход"},
-]
+            {"key": "lvl1", "price": 64.95, "label": "1-й вход"},
+            {"key": "lvl2", "price": 62.90, "label": "2-й вход"},
+            {"key": "lvl3", "price": 61.50, "label": "3-й вход"},
+        ],
     },
 }
 
@@ -59,11 +60,14 @@ LADDER_WEIGHTS = {
     "lvl2": 0.30,
     "lvl3": 0.40,
 }
+
 MIN_TRADE_USD = 1.50
 MIN_SHARES = 0.001
 MAX_OPEN_TRADES = 3
+MAX_DEVIATION = 0.01  # 1%
 
-def send_message(text):
+
+def send_message(text: str) -> None:
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     response = requests.post(
         url,
@@ -71,6 +75,8 @@ def send_message(text):
         timeout=20,
     )
     response.raise_for_status()
+
+
 def get_updates(offset=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
     params = {"timeout": 10}
@@ -79,8 +85,47 @@ def get_updates(offset=None):
 
     response = requests.get(url, params=params, timeout=20)
     response.raise_for_status()
-    return response.json()["result"] 
-def process_telegram_commands(state):
+    return response.json()["result"]
+
+
+def get_open_trades_count(state) -> int:
+    return sum(
+        1 for asset in state["assets"].values()
+        if any(asset["levels"].values())
+    )
+
+
+def build_status_message(state) -> str:
+    available_cash = float(state["available_cash"])
+    open_trades = get_open_trades_count(state)
+
+    lines = [
+        "📊 Статус системы",
+        f"Кэш: ${available_cash:.2f}",
+        f"Макс. открытых сделок: {MAX_OPEN_TRADES}",
+        f"Текущих активных сделок: {open_trades}",
+        "",
+    ]
+
+    for ticker, config in WATCHLIST.items():
+        asset_state = state["assets"][ticker]
+
+        active_labels = []
+        for level in config["levels"]:
+            level_key = level["key"]
+            label = level["label"]
+            if asset_state["levels"].get(level_key, False):
+                active_labels.append(label)
+
+        if active_labels:
+            lines.append(f"{ticker}: {', '.join(active_labels)}")
+        else:
+            lines.append(f"{ticker}: нет активных уровней")
+
+    return "\n".join(lines)
+
+
+def process_telegram_commands(state) -> bool:
     last_update_id = state.get("last_update_id")
     offset = last_update_id + 1 if last_update_id is not None else None
 
@@ -101,7 +146,7 @@ def process_telegram_commands(state):
         if chat_id != str(CHAT_ID):
             continue
 
-        if text.startswith("/cash"):
+        if text.lower().startswith("/cash"):
             parts = text.split()
 
             if len(parts) == 2:
@@ -122,16 +167,32 @@ def process_telegram_commands(state):
             state["available_cash"] = cash_value
             changed = True
             send_message(f"✅ Кэш обновлён: ${cash_value:.2f}")
+            continue
 
-    return changed   
+        elif text.lower() == "/status on":
+            send_message(
+                "✅ Бот активен\n"
+                f"💰 Кэш: ${float(state['available_cash']):.2f}\n"
+                f"📊 Активов: {len(state['assets'])}"
+            )
+            changed = True
+            continue
+
+        elif text.lower() == "/status":
+            send_message(build_status_message(state))
+            changed = True
+            continue
+
+    return changed
 
 
-def get_price(ticker):
+def get_price(ticker: str) -> float:
     hist = yf.Ticker(ticker).history(period="1d", interval="1m")
     if hist.empty:
         hist = yf.Ticker(ticker).history(period="5d", interval="1d")
     if hist.empty:
         raise ValueError(f"Нет данных по {ticker}")
+
     return float(hist["Close"].dropna().iloc[-1])
 
 
@@ -155,15 +216,15 @@ def load_state():
 
         return state
 
-    import json
     with open(STATE_FILE, "r", encoding="utf-8") as f:
         state = json.load(f)
 
-    # Мягкая миграция старого state.json
     if "available_cash" not in state:
         state["available_cash"] = DEFAULT_AVAILABLE_CASH
+
     if "last_update_id" not in state:
         state["last_update_id"] = None
+
     if "assets" not in state:
         old_state = state
         state = {
@@ -172,16 +233,36 @@ def load_state():
             "assets": old_state,
         }
 
+    for ticker, config in WATCHLIST.items():
+        if ticker not in state["assets"]:
+            state["assets"][ticker] = {
+                "levels": {},
+                "tp": False,
+                "sl": False,
+            }
+
+        if "levels" not in state["assets"][ticker]:
+            state["assets"][ticker]["levels"] = {}
+
+        if "tp" not in state["assets"][ticker]:
+            state["assets"][ticker]["tp"] = False
+
+        if "sl" not in state["assets"][ticker]:
+            state["assets"][ticker]["sl"] = False
+
+        for level in config["levels"]:
+            if level["key"] not in state["assets"][ticker]["levels"]:
+                state["assets"][ticker]["levels"][level["key"]] = False
+
     return state
 
 
-def save_state(state):
-    import json
+def save_state(state) -> None:
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def check_entry_levels(state, ticker, config, current_price):
+def check_entry_levels(state, ticker, config, current_price) -> bool:
     changed = False
     asset_state = state["assets"][ticker]
     available_cash = float(state["available_cash"])
@@ -196,49 +277,54 @@ def check_entry_levels(state, ticker, config, current_price):
         amount_usd = asset_budget * LADDER_WEIGHTS[level_key]
         shares_est = amount_usd / current_price if current_price > 0 else 0
         shares_est = round(shares_est, 3)
-        risk_usd = amount_usd * 0.15
-        risk_percent = (risk_usd / available_cash) * 100
-        cash_after_trade = available_cash - amount_usd
-        
-        open_trades = sum(
-            1 for a in state["assets"].values()
-            if any(a["levels"].values())
-        )
 
-        if open_trades >= MAX_OPEN_TRADES:
-            continue
-        
+        risk_usd = amount_usd * 0.15
+        risk_percent = (risk_usd / available_cash * 100) if available_cash > 0 else 0
+        cash_after_trade = available_cash - amount_usd
+
         if amount_usd < MIN_TRADE_USD:
             continue
-            
-        if shares_est < MIN_SHARES:    
+
+        if shares_est < MIN_SHARES:
+            continue
+
+        open_trades = get_open_trades_count(state)
+        if open_trades >= MAX_OPEN_TRADES:
+            continue
+
+        deviation = abs(current_price - trigger_price) / trigger_price
+        if deviation > MAX_DEVIATION:
             continue
 
         if current_price <= trigger_price and not asset_state["levels"][level_key]:
+            action = "BUY"
+
             send_message(
-                f"🚨 Сигнал по системе\n"
+                f"🧨 Сигнал по системе\n"
                 f"{config['name']} ({ticker})\n"
                 f"Уровень: {label}\n"
                 f"Текущая цена: {current_price:.2f}\n"
                 f"Цена уровня: {trigger_price:.2f}\n"
-                f"Кэш в расчёте: ${available_cash:.2f}\n"
+                f"Кэш: ${available_cash:.2f}\n"
                 f"Сумма покупки: ${amount_usd:.2f}\n"
-                f"Примерно акций: {shares_est:.3f}\n"
+                f"Акций: {shares_est:.3f}\n"
                 f"Риск сделки: ${risk_usd:.2f} ({risk_percent:.2f}%)\n"
                 f"Кэш после сделки: ${cash_after_trade:.2f}\n"
-                f"Действие: купить / ждать / пропустить"
+                f"\nРешение: {'🟢 BUY' if action == 'BUY' else '⛔ SKIP'}"
             )
-            asset_state["levels"][level_key] = True
-            changed = True
+
+            if action == "BUY":
+                asset_state["levels"][level_key] = True
+                changed = True
 
         elif current_price > trigger_price and asset_state["levels"][level_key]:
             asset_state["levels"][level_key] = False
             changed = True
-            
+
     return changed
 
 
-def check_tp_sl(state, ticker, config, current_price):
+def check_tp_sl(state, ticker, config, current_price) -> bool:
     changed = False
     asset_state = state["assets"][ticker]
 
@@ -257,6 +343,7 @@ def check_tp_sl(state, ticker, config, current_price):
         )
         asset_state["tp"] = True
         changed = True
+
     elif current_price < tp_price and asset_state["tp"]:
         asset_state["tp"] = False
         changed = True
@@ -272,6 +359,7 @@ def check_tp_sl(state, ticker, config, current_price):
         )
         asset_state["sl"] = True
         changed = True
+
     elif current_price > sl_price and asset_state["sl"]:
         asset_state["sl"] = False
         changed = True
