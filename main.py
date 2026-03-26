@@ -202,6 +202,7 @@ def load_state():
             "available_cash": DEFAULT_AVAILABLE_CASH,
             "last_update_id": None,
             "assets": {},
+            "trades": [],
         }
 
         for ticker, config in WATCHLIST.items():
@@ -231,6 +232,8 @@ def load_state():
             "available_cash": DEFAULT_AVAILABLE_CASH,
             "last_update_id": None,
             "assets": old_state,
+    if "trades" not in state:
+        state["trades"] = []
         }
 
     for ticker, config in WATCHLIST.items():
@@ -313,9 +316,19 @@ def check_entry_levels(state, ticker, config, current_price) -> bool:
                 f"\nРешение: {'🟢 BUY' if action == 'BUY' else '⛔ SKIP'}"
             )
 
-            if action == "BUY":
-                asset_state["levels"][level_key] = True
-                changed = True
+        if action == "BUY":
+            asset_state["levels"][level_key] = True
+            changed = True
+
+            trade = {
+                "ticker": ticker,
+                "price": round(current_price, 2),
+                "amount": round(amount_usd, 2),
+                "shares": round(shares_est, 3),
+                "level": label,
+            }
+
+            state["trades"].append(trade)
 
         elif current_price > trigger_price and asset_state["levels"][level_key]:
             asset_state["levels"][level_key] = False
