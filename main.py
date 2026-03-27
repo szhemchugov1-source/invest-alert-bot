@@ -183,6 +183,31 @@ def process_telegram_commands(state) -> bool:
             changed = True
             continue
 
+        elif text.lower() == "/trades":
+
+    trades = state.get("trades", [])
+
+    if not trades:
+        send_message("📭 Сделок пока нет")
+        continue
+
+    msg = "📊 Журнал сделок\n\n"
+    msg += "Тикер | Цена | $ | Акции | Уровень\n"
+    msg += "-" * 35 + "\n"
+
+    for t in trades[-10:]:
+        msg += f"{t['ticker']} | {t['price']} | {t['amount']} | {t['shares']} | {t['level']}\n"
+
+    send_message(msg)
+    changed = True
+    continue
+
+    elif text.lower() == "/clear_trades":
+    state["trades"] = []
+    send_message("🗑 Журнал сделок очищен")
+    changed = True
+    continue
+    
     return changed
 
 
