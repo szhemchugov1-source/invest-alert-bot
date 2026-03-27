@@ -433,4 +433,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import time
+    while True:
+        try:
+            main()
+        except Exception as e:
+            print(f"Ошибка: {e}")
+        time.sleep(10)
