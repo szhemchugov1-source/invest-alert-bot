@@ -141,6 +141,7 @@ def process_telegram_commands(state) -> bool:
             continue
 
         text = message.get("text", "").strip()
+        print(f"Telegram update received: {text}")
         chat_id = str(message.get("chat", {}).get("id", ""))
 
         if chat_id != str(CHAT_ID):
