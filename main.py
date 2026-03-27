@@ -285,6 +285,7 @@ def load_state():
 
     return state
 
+
 def save_state(state) -> None:
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
@@ -325,8 +326,6 @@ def check_entry_levels(state, ticker, config, current_price) -> bool:
             continue
 
         if current_price <= trigger_price and not asset_state["levels"][level_key]:
-            action = "BUY"
-
             send_message(
                 f"🧨 Сигнал по системе\n"
                 f"{config['name']} ({ticker})\n"
@@ -338,10 +337,9 @@ def check_entry_levels(state, ticker, config, current_price) -> bool:
                 f"Акций: {shares_est:.3f}\n"
                 f"Риск сделки: ${risk_usd:.2f} ({risk_percent:.2f}%)\n"
                 f"Кэш после сделки: ${cash_after_trade:.2f}\n"
-                f"\nРешение: {'🟢 BUY' if action == 'BUY' else '⛔ SKIP'}"
+                f"\nРешение: 🟢 BUY"
             )
 
-        if action == "BUY":
             asset_state["levels"][level_key] = True
             changed = True
 
@@ -352,7 +350,6 @@ def check_entry_levels(state, ticker, config, current_price) -> bool:
                 "shares": round(shares_est, 3),
                 "level": label,
             }
-
             state["trades"].append(trade)
 
         elif current_price > trigger_price and asset_state["levels"][level_key]:
