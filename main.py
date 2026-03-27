@@ -404,9 +404,9 @@ def check_tp_sl(state, ticker, config, current_price) -> bool:
 
 def main():
     if not BOT_TOKEN:
-        raise RuntimeError("Не задан TELEGRAM_BOT_TOKEN")
+        raise RuntimeError("Не задан BOT_TOKEN")
     if not CHAT_ID:
-        raise RuntimeError("Не задан TELEGRAM_CHAT_ID")
+        raise RuntimeError("Не задан CHAT_ID")
 
     state = load_state()
     changed_any = False
@@ -419,7 +419,7 @@ def main():
             current_price = get_price(ticker)
             print(f"{ticker}: {current_price:.2f}")
         except Exception as e:
-            send_message(f"⚠️ Ошибка получения цены {ticker}: {e}")
+            print(f"Ошибка получения цены {ticker}: {e}")
             continue
 
         if check_entry_levels(state, ticker, config, current_price):
@@ -430,13 +430,3 @@ def main():
 
     if changed_any:
         save_state(state)
-
-
-if __name__ == "__main__":
-    import time
-    while True:
-        try:
-            main()
-        except Exception as e:
-            print(f"Ошибка: {e}")
-        time.sleep(10)
