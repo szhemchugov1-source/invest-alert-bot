@@ -438,7 +438,7 @@ def main():
 if __name__ == "__main__":
     import time
 
-    print("Railway bot process started")
+    print("RAILWAY START V2")
 
     try:
         send_message("🚂 Railway-бот запущен")
@@ -447,7 +447,7 @@ if __name__ == "__main__":
 
     while True:
         try:
-            print("Loop tick")
+            print("LOOP V2")
             main()
         except Exception as e:
             print(f"Ошибка: {e}")
