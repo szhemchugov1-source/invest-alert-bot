@@ -438,10 +438,10 @@ def main():
 if __name__ == "__main__":
     import time
 
-    print("RAILWAY START V2")
+    print("RAILWAY TEST 777")
 
     try:
-        send_message("🚂 Railway-бот запущен")
+        send_message("🚂 RAILWAY TEST 777")
     except Exception as e:
         print(f"Ошибка стартового сообщения: {e}")
 
