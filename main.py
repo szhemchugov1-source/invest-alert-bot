@@ -433,3 +433,21 @@ def main():
 
     if changed_any:
         save_state(state)
+
+if __name__ == "__main__":
+    import time
+
+    print("Railway bot process started")
+
+    try:
+        send_message("🚂 Railway-бот запущен")
+    except Exception as e:
+        print(f"Ошибка стартового сообщения: {e}")
+
+    while True:
+        try:
+            print("Loop tick")
+            main()
+        except Exception as e:
+            print(f"Ошибка: {e}")
+        time.sleep(10)
