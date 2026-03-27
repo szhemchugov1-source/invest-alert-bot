@@ -250,14 +250,16 @@ def load_state():
     if "last_update_id" not in state:
         state["last_update_id"] = None
 
+    if "trades" not in state:
+        state["trades"] = []
+
     if "assets" not in state:
         old_state = state
         state = {
             "available_cash": DEFAULT_AVAILABLE_CASH,
             "last_update_id": None,
             "assets": old_state,
-    if "trades" not in state:
-        state["trades"] = []
+            "trades": [],
         }
 
     for ticker, config in WATCHLIST.items():
@@ -282,7 +284,6 @@ def load_state():
                 state["assets"][ticker]["levels"][level["key"]] = False
 
     return state
-
 
 def save_state(state) -> None:
     with open(STATE_FILE, "w", encoding="utf-8") as f:
