@@ -403,6 +403,9 @@ def check_tp_sl(state, ticker, config, current_price) -> bool:
 
 
 def main():
+    print(f"BOT_TOKEN loaded: {bool(BOT_TOKEN)}")
+    print(f"CHAT_ID loaded: {bool(CHAT_ID)}")
+    
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN")
     if not CHAT_ID:
