@@ -79,13 +79,19 @@ def send_message(text: str) -> None:
 
 def get_updates(offset=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
-    params = {"timeout": 10}
+
+    params = {
+        "timeout": 10
+    }
+
     if offset is not None:
         params["offset"] = offset
 
     response = requests.get(url, params=params, timeout=20)
     response.raise_for_status()
-    return response.json()["result"]
+    data = response.json()
+
+    return data.get("result", [])
 
 
 def get_open_trades_count(state) -> int:
@@ -125,15 +131,18 @@ def build_status_message(state) -> str:
     return "\n".join(lines)
 
 
-def process_telegram_commands(state) -> bool:
-    last_update_id = state.get("last_update_id")
-    offset = last_update_id + 1 if last_update_id is not None else None
-
-    updates = get_updates(offset=offset)
+def process_telegram_commands(state):
     changed = False
 
+    last_update_id = state.get("last_update_id", 0)
+    updates = get_updates(last_update_id + 1)
+
+    if not updates:
+        return changed
+
     for update in updates:
-        state["last_update_id"] = update["update_id"]
+        update_id = update["update_id"]
+        state["last_update_id"] = update_id
         changed = True
 
         message = update.get("message")
@@ -142,46 +151,44 @@ def process_telegram_commands(state) -> bool:
 
         text = message.get("text", "").strip()
         print(f"Telegram update received: {text}")
-        chat_id = str(message.get("chat", {}).get("id", ""))
 
-        if chat_id != str(CHAT_ID):
+        if not text:
             continue
 
-        if text.lower().startswith("/cash"):
-            parts = text.split()
+        chat_id = str(message.get("chat", {}).get("id", ""))
 
-            if len(parts) == 2:
-                raw_value = parts[1]
-            else:
-                raw_value = text.replace("/cash", "", 1).strip()
+        if str(CHAT_ID) != chat_id:
+            continue
 
-            try:
-                cash_value = float(raw_value)
-            except ValueError:
-                send_message("⚠️ Неверный формат. Пример: /cash 20")
-                continue
-
-            if cash_value <= 0:
-                send_message("⚠️ Кэш должен быть больше 0.")
-                continue
-
-            state["available_cash"] = cash_value
-            changed = True
-            send_message(f"✅ Кэш обновлён: ${cash_value:.2f}")
+        if text.lower() == "/status":
+            send_message(build_status_message(state))
             continue
 
         elif text.lower() == "/status on":
             send_message(
-                "✅ Бот активен\n"
-                f"💰 Кэш: ${float(state['available_cash']):.2f}\n"
-                f"📊 Активов: {len(state['assets'])}"
+                f"✅ Бот активен\n"
+                f"💰 Кэш: ${state.get('available_cash', 0):.2f}\n"
+                f"📊 Активов: {len(WATCHLIST)}"
             )
-            changed = True
             continue
 
-        elif text.lower() == "/status":
-            send_message(build_status_message(state))
+        elif text.lower().startswith("/cash"):
+            parts = text.split()
+
+            if len(parts) < 2:
+                send_message("⚠️ Пример команды: /cash 20")
+                continue
+
+            try:
+                cash_value = float(parts[1])
+            except ValueError:
+                send_message("⚠️ Введи число. Пример: /cash 20")
+                continue
+
+            state["available_cash"] = cash_value
             changed = True
+
+            send_message(f"✅ Кэш обновлён: ${cash_value:.2f}")
             continue
 
         elif text.lower() == "/trades":
@@ -216,13 +223,6 @@ def process_telegram_commands(state) -> bool:
                     lines.append("")
 
             send_message("\n".join(lines))
-            changed = True
-            continue
-
-        elif text.lower() == "/clear_trades":
-            state["trades"] = []
-            send_message("🗑 Журнал сделок очищен")
-            changed = True
             continue
 
     return changed
@@ -454,7 +454,8 @@ def main():
     changed_any = False
 
     if process_telegram_commands(state):
-        changed_any = True
+    changed_any = True
+    save_state(state)
 
     for ticker, config in WATCHLIST.items():
         try:
