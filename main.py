@@ -450,10 +450,15 @@ def check_entry_levels(state, ticker, config, current_price):
         # 2) ЕСЛИ СДЕЛКА УЖЕ ЕСТЬ
         # =========================
         else:
-            levels_hit = open_trade.get("levels_hit", [])
+            levels_hit = open_trade.get("levels_hit")
+
             if not isinstance(levels_hit, list):
                 levels_hit = []
 
+            # Жёстко сохраняем обратно (фикс бага состояния)
+            open_trade["levels_hit"] = levels_hit
+
+            # Защита от повторной обработки уровня 
             if level_key in levels_hit:
                 continue
 
