@@ -352,45 +352,73 @@ def check_entry_levels(state, ticker, config, current_price):
     return changed
 
 
-def check_tp_sl(state, ticker, config, current_price) -> bool:
+def check_tp_sl(state, ticker, config, current_price):
     changed = False
-    asset_state = state["assets"][ticker]
 
-    entry_price = config["entry_price"]
-    tp_price = round(entry_price * 1.20, 2)
-    sl_price = round(entry_price * 0.85, 2)
+    if "trades" not in state:
+        return changed
 
-    if current_price >= tp_price and not asset_state["tp"]:
-        send_message(
-            f"💰 ФИКСАЦИЯ ПРИБЫЛИ\n"
-            f"{config['name']} ({ticker})\n"
-            f"Текущая цена: {current_price:.2f}\n"
-            f"Цель +20%: {tp_price:.2f}\n"
-            f"Базовая цена: {entry_price:.2f}\n"
-            f"Действие: зафиксировать прибыль"
-        )
-        asset_state["tp"] = True
-        changed = True
+    if ticker not in state["trades"]:
+        return changed
 
-    elif current_price < tp_price and asset_state["tp"]:
-        asset_state["tp"] = False
-        changed = True
+    for trade in state["trades"][ticker]:
+        if trade.get("status") == "CLOSED":
+            continue
 
-    if current_price <= sl_price and not asset_state["sl"]:
-        send_message(
-            f"🛑 СТОП ЛОСС\n"
-            f"{config['name']} ({ticker})\n"
-            f"Текущая цена: {current_price:.2f}\n"
-            f"Стоп -15%: {sl_price:.2f}\n"
-            f"Базовая цена: {entry_price:.2f}\n"
-            f"Действие: продать или сократить позицию"
-        )
-        asset_state["sl"] = True
-        changed = True
+        tp1 = trade.get("tp1")
+        tp2 = trade.get("tp2")
+        sl = trade.get("sl")
 
-    elif current_price > sl_price and asset_state["sl"]:
-        asset_state["sl"] = False
-        changed = True
+        # Цель 1
+        if (
+            tp1 is not None
+            and current_price >= tp1
+            and not trade.get("tp1_hit", False)
+        ):
+            send_message(
+                f"🎯 Цель 1 достигнута\n\n"
+                f"Акция: {ticker}\n"
+                f"Текущая цена: {current_price:.2f}\n"
+                f"Цель 1: {tp1}\n"
+                f"Действие: ПРОДАТЬ 50%"
+            )
+            trade["tp1_hit"] = True
+            changed = True
+
+        # Цель 2
+        if (
+            tp2 is not None
+            and current_price >= tp2
+            and not trade.get("tp2_hit", False)
+        ):
+            send_message(
+                f"🎯 Цель 2 достигнута\n\n"
+                f"Акция: {ticker}\n"
+                f"Текущая цена: {current_price:.2f}\n"
+                f"Цель 2: {tp2}\n"
+                f"Действие: ПРОДАТЬ ОСТАТОК"
+            )
+            trade["tp2_hit"] = True
+            trade["status"] = "CLOSED"
+            changed = True
+
+        # Стоп
+        if (
+            sl is not None
+            and current_price <= sl
+            and not trade.get("sl_hit", False)
+            and trade.get("status") != "CLOSED"
+        ):
+            send_message(
+                f"🛑 Стоп достигнут\n\n"
+                f"Акция: {ticker}\n"
+                f"Текущая цена: {current_price:.2f}\n"
+                f"Стоп: {sl}\n"
+                f"Действие: ПРОДАТЬ ВСЁ"
+            )
+            trade["sl_hit"] = True
+            trade["status"] = "CLOSED"
+            changed = True
 
     return changed
 
