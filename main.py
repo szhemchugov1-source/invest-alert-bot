@@ -438,16 +438,8 @@ def main():
 if __name__ == "__main__":
     import time
 
-    print("RAILWAY TEST 777")
-
-    try:
-        send_message("🚂 RAILWAY TEST 777")
-    except Exception as e:
-        print(f"Ошибка стартового сообщения: {e}")
-
     while True:
         try:
-            print("LOOP V2")
             main()
         except Exception as e:
             print(f"Ошибка: {e}")
