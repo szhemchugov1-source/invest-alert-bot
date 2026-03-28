@@ -168,7 +168,10 @@ def build_status_message(state):
 def process_telegram_commands(state):
     changed = False
 
-    last_update_id = state.get("last_update_id", 0)
+    last_update_id = state.get("last_update_id")
+    if last_update_id is None:
+        last_update_id = 0
+
     updates = get_updates(last_update_id + 1)
 
     if not updates:
