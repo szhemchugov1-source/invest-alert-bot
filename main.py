@@ -358,69 +358,147 @@ def check_entry_levels(state, ticker, config, current_price):
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
 
-    # Не открываем новую сделку, если уже есть активная по этому тикеру
-    has_open_trade = any(
-        isinstance(t, dict) and t.get("status") == "OPEN"
-        for t in state["trades"][ticker]
-    )
-
-    if has_open_trade:
-        return False
-
     available_cash = float(state.get("available_cash", 0) or 0)
+
+    # Один общий бюджет на тикер, делим его по уровням
+    asset_budget = available_cash / max(len(WATCHLIST), 1)
+
+    level_weights = {
+        "lvl1": 0.40,
+        "lvl2": 0.30,
+        "lvl3": 0.30,
+    }
+
+    # Ищем открытую сделку по тикеру
+    open_trade = next(
+        (
+            t for t in state["trades"][ticker]
+            if isinstance(t, dict) and t.get("status") == "OPEN"
+        ),
+        None
+    )
 
     for level in config.get("levels", []):
         level_key = level["key"]
         level_price = level["price"]
 
-        already_triggered = any(
-            isinstance(t, dict) and t.get("level") == level_key and t.get("status") == "OPEN"
-            for t in state["trades"][ticker]
-        )
-
-        if already_triggered:
+        level_amount = round(asset_budget * level_weights.get(level_key, 0), 2)
+        if level_amount <= 0:
             continue
 
-        if current_price <= level_price:
-            entry_price = current_price
+        # =========================
+        # 1) ЕСЛИ СДЕЛКИ ЕЩЁ НЕТ
+        # =========================
+        if open_trade is None:
+            if current_price <= level_price:
+                shares_est = round(level_amount / current_price, 4) if current_price > 0 else 0
+                if shares_est <= 0:
+                    continue
 
-            asset_budget = available_cash / max(len(WATCHLIST), 1)
-            shares_est = round(asset_budget / entry_price, 4) if entry_price > 0 else 0
+                avg_price = round(current_price, 2)
+                tp1 = round(avg_price * 1.03, 2)
+                tp2 = round(avg_price * 1.06, 2)
+                sl = round(avg_price * 0.97, 2)
 
-            tp1 = round(entry_price * 1.03, 2)
-            tp2 = round(entry_price * 1.06, 2)
-            sl = round(entry_price * 0.97, 2)
+                trade = {
+                    "ticker": ticker,
+                    "entry": avg_price,
+                    "avg_price": avg_price,
+                    "shares": shares_est,
+                    "total_shares": shares_est,
+                    "amount_usd": level_amount,
+                    "total_invested": level_amount,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "sl": sl,
+                    "level": level_key,
+                    "levels_hit": [level_key],
+                    "status": "OPEN",
+                    "tp1_hit": False,
+                    "tp2_hit": False,
+                    "sl_hit": False
+                }
 
-            trade = {
-                "ticker": ticker,
-                "entry": entry_price,
-                "shares": shares_est,
-                "amount_usd": round(asset_budget, 2),
-                "tp1": tp1,
-                "tp2": tp2,
-                "sl": sl,
-                "level": level_key,
-                "status": "OPEN",
-                "tp1_hit": False,
-                "tp2_hit": False,
-                "sl_hit": False
-            }
+                state["trades"][ticker].append(trade)
 
-            state["trades"][ticker].append(trade)
+                send_message(
+                    f"🟢 BUY SIGNAL\n\n"
+                    f"Акция: {ticker}\n"
+                    f"Текущая цена: {current_price:.2f}\n"
+                    f"Уровень входа: {level_key}\n\n"
+                    f"Купить: {shares_est} акций\n"
+                    f"Сумма входа: ${level_amount:.2f}\n"
+                    f"Средняя цена: {avg_price:.2f}\n\n"
+                    f"🎯 Цель 1: {tp1} → ПРОДАТЬ 50%\n"
+                    f"🎯 Цель 2: {tp2} → ПРОДАТЬ ОСТАТОК\n"
+                    f"🛑 Стоп: {sl} → ПРОДАТЬ ВСЁ"
+                )
 
-            send_message(
-                f"🟢 BUY SIGNAL\n\n"
-                f"Акция: {ticker}\n"
-                f"Текущая цена: {entry_price:.2f}\n"
-                f"Уровень входа: {level_key}\n\n"
-                f"Объём: {shares_est} акций\n"
-                f"Сумма входа: ${asset_budget:.2f}\n\n"
-                f"🎯 Цель 1: {tp1} → ПРОДАТЬ 50%\n"
-                f"🎯 Цель 2: {tp2} → ПРОДАТЬ ОСТАТОК\n"
-                f"🛑 Стоп: {sl} → ПРОДАТЬ ВСЁ"
-            )
+                changed = True
+                break
 
-            changed = True
+        # =========================
+        # 2) ЕСЛИ СДЕЛКА УЖЕ ЕСТЬ
+        # =========================
+        else:
+            levels_hit = open_trade.get("levels_hit", [])
+            if not isinstance(levels_hit, list):
+                levels_hit = []
+
+            if level_key in levels_hit:
+                continue
+
+            if current_price <= level_price:
+                add_shares = round(level_amount / current_price, 4) if current_price > 0 else 0
+                if add_shares <= 0:
+                    continue
+
+                prev_total_invested = float(open_trade.get("total_invested", open_trade.get("amount_usd", 0)) or 0)
+                prev_total_shares = float(open_trade.get("total_shares", open_trade.get("shares", 0)) or 0)
+
+                new_total_invested = round(prev_total_invested + level_amount, 2)
+                new_total_shares = round(prev_total_shares + add_shares, 4)
+
+                if new_total_shares <= 0:
+                    continue
+
+                new_avg_price = round(new_total_invested / new_total_shares, 2)
+
+                new_tp1 = round(new_avg_price * 1.03, 2)
+                new_tp2 = round(new_avg_price * 1.06, 2)
+                new_sl = round(new_avg_price * 0.97, 2)
+
+                levels_hit.append(level_key)
+
+                open_trade["entry"] = new_avg_price
+                open_trade["avg_price"] = new_avg_price
+                open_trade["shares"] = new_total_shares
+                open_trade["total_shares"] = new_total_shares
+                open_trade["amount_usd"] = new_total_invested
+                open_trade["total_invested"] = new_total_invested
+                open_trade["tp1"] = new_tp1
+                open_trade["tp2"] = new_tp2
+                open_trade["sl"] = new_sl
+                open_trade["level"] = " + ".join(levels_hit)
+                open_trade["levels_hit"] = levels_hit
+
+                send_message(
+                    f"🔵 DCA / ДОКУПКА\n\n"
+                    f"Акция: {ticker}\n"
+                    f"Сработал уровень: {level_key}\n"
+                    f"Текущая цена: {current_price:.2f}\n\n"
+                    f"Докупить: {add_shares} акций\n"
+                    f"Сумма докупки: ${level_amount:.2f}\n\n"
+                    f"Всего акций: {new_total_shares}\n"
+                    f"Всего вложено: ${new_total_invested:.2f}\n"
+                    f"Новая средняя цена: {new_avg_price:.2f}\n\n"
+                    f"🎯 Цель 1: {new_tp1} → ПРОДАТЬ 50%\n"
+                    f"🎯 Цель 2: {new_tp2} → ПРОДАТЬ ОСТАТОК\n"
+                    f"🛑 Стоп: {new_sl} → ПРОДАТЬ ВСЁ"
+                )
+
+                changed = True
+                break
 
     return changed
 
