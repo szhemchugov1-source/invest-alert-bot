@@ -444,7 +444,7 @@ def check_tp_sl(state, ticker, config, current_price):
 def main():
     print(f"BOT_TOKEN loaded: {bool(BOT_TOKEN)}")
     print(f"CHAT_ID loaded: {bool(CHAT_ID)}")
-    
+
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN")
     if not CHAT_ID:
@@ -454,8 +454,8 @@ def main():
     changed_any = False
 
     if process_telegram_commands(state):
-    changed_any = True
-    save_state(state)
+        changed_any = True
+        save_state(state)
 
     for ticker, config in WATCHLIST.items():
         try:
