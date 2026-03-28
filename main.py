@@ -455,10 +455,10 @@ def check_entry_levels(state, ticker, config, current_price):
             if not isinstance(levels_hit, list):
                 levels_hit = []
 
-            # Жёстко сохраняем обратно (фикс бага состояния)
+            # Жёстко сохраняем обратно, чтобы список не терялся
             open_trade["levels_hit"] = levels_hit
 
-            # Защита от повторной обработки уровня 
+            # Защита от повторной обработки уровня
             if level_key in levels_hit:
                 continue
 
