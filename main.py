@@ -111,15 +111,16 @@ def build_status_message(state):
     active_positions = []
     empty_positions = []
 
-    for ticker, ticker_trades in trades.items():
+    for ticker in WATCHLIST.keys():
+        ticker_trades = trades.get(ticker, [])
         has_open = False
-        total_shares = 0
+        total_shares = 0.0
 
         for trade in ticker_trades:
             if trade.get("status") == "OPEN":
                 open_count += 1
                 has_open = True
-                total_shares += float(trade.get("shares", 0))
+                total_shares += float(trade.get("shares", 0) or 0)
 
             elif trade.get("status") == "CLOSED":
                 closed_count += 1
