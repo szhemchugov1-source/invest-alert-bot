@@ -231,6 +231,9 @@ def process_telegram_commands(state):
         elif text.lower() == "/trades":
             trades = state.get("trades", {})
 
+            if isinstance(trades, list) or not isinstance(trades, dict):
+                trades = {}
+
             has_trades = any(trades.get(ticker) for ticker in trades)
             if not has_trades:
                 send_message("📭 Сделок пока нет")
@@ -239,21 +242,27 @@ def process_telegram_commands(state):
             lines = ["📒 Журнал сделок", ""]
 
             for ticker, ticker_trades in trades.items():
-                if not ticker_trades:
+                if not isinstance(ticker_trades, list) or not ticker_trades:
                     continue
 
                 for trade in ticker_trades[-5:]:
+                    if not isinstance(trade, dict):
+                        continue
+
                     status = trade.get("status", "UNKNOWN")
-                    level = trade.get("level", "-")
-                    entry = trade.get("entry", "-")
-                    shares = trade.get("shares", "-")
+                    levels = trade.get("level", "-")
+                    avg_price = trade.get("avg_price", trade.get("entry", "-"))
+                    shares = trade.get("total_shares", trade.get("shares", "-"))
+                    invested = trade.get("total_invested", trade.get("amount_usd", "-"))
                     tp1 = trade.get("tp1", "-")
                     tp2 = trade.get("tp2", "-")
                     sl = trade.get("sl", "-")
 
-                    lines.append(f"{ticker} | {level} | {status}")
-                    lines.append(f"Вход: {entry}")
+                    lines.append(f"{ticker} | {status}")
+                    lines.append(f"Уровни: {levels}")
+                    lines.append(f"Средняя: {avg_price}")
                     lines.append(f"Акции: {shares}")
+                    lines.append(f"Вложено: ${invested}" if invested != "-" else "Вложено: -")
                     lines.append(f"Цель 1: {tp1}")
                     lines.append(f"Цель 2: {tp2}")
                     lines.append(f"Стоп: {sl}")
