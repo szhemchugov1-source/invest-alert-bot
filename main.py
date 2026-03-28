@@ -251,6 +251,12 @@ def process_telegram_commands(state):
                 if not isinstance(ticker_trades, list) or not ticker_trades:
                     continue
 
+                # получаем текущую цену
+                try:
+                    current_price = round(get_price(ticker), 2)
+                except Exception:
+                    current_price = None
+
                 for trade in ticker_trades[-5:]:
                     if not isinstance(trade, dict):
                         continue
@@ -268,11 +274,31 @@ def process_telegram_commands(state):
                     tp2_status = "достигнута" if trade.get("tp2_hit", False) else "не достигнута"
                     sl_status = "сработал" if trade.get("sl_hit", False) else "не сработал"
 
+                    profit_text = "Текущая прибыль: -"
+                    current_price_text = "Текущая цена: -"
+
+                    try:
+                        avg_price_num = float(avg_price)
+                        shares_num = float(shares)
+
+                        if current_price is not None and avg_price_num > 0:
+                            profit_usd = round((current_price - avg_price_num) * shares_num, 2)
+                            profit_pct = round(((current_price - avg_price_num) / avg_price_num) * 100, 2)
+
+                            sign = "+" if profit_usd >= 0 else ""
+
+                            current_price_text = f"Текущая цена: {current_price}"
+                            profit_text = f"Текущая прибыль: {sign}${profit_usd} ({sign}{profit_pct}%)"
+                    except Exception:
+                        pass
+
                     lines.append(f"{ticker} | {status}")
                     lines.append(f"Алерт: {levels}")
                     lines.append(f"Средняя: {avg_price}")
+                    lines.append(current_price_text)
                     lines.append(f"Акции: {shares}")
                     lines.append(f"Вложено: ${invested}" if invested != "-" else "Вложено: -")
+                    lines.append(profit_text)
                     lines.append("")
                     lines.append(f"🎯 Цель 1 (для позиции {levels}): {tp1} [{tp1_status}]")
                     lines.append(f"🎯 Цель 2 (для позиции {levels}): {tp2} [{tp2_status}]")
