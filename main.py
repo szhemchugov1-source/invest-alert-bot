@@ -230,16 +230,22 @@ def process_telegram_commands(state):
 
         elif text.lower() == "/trades":
             trades = state.get("trades", {})
+            cash = state.get("available_cash", 0)
 
             if isinstance(trades, list) or not isinstance(trades, dict):
                 trades = {}
 
             has_trades = any(trades.get(ticker) for ticker in trades)
             if not has_trades:
-                send_message("📭 Сделок пока нет")
+                send_message(f"📭 Сделок пока нет\n\n💰 Кэш: ${cash:.2f}")
                 continue
 
-            lines = ["📒 Журнал сделок", ""]
+            lines = [
+                "📒 Журнал сделок",
+                "",
+                f"💰 Кэш: ${cash:.2f}",
+                ""
+            ]
 
             for ticker, ticker_trades in trades.items():
                 if not isinstance(ticker_trades, list) or not ticker_trades:
@@ -258,14 +264,19 @@ def process_telegram_commands(state):
                     tp2 = trade.get("tp2", "-")
                     sl = trade.get("sl", "-")
 
+                    tp1_status = "достигнута" if trade.get("tp1_hit", False) else "не достигнута"
+                    tp2_status = "достигнута" if trade.get("tp2_hit", False) else "не достигнута"
+                    sl_status = "сработал" if trade.get("sl_hit", False) else "не сработал"
+
                     lines.append(f"{ticker} | {status}")
-                    lines.append(f"Уровни: {levels}")
+                    lines.append(f"Алерт: {levels}")
                     lines.append(f"Средняя: {avg_price}")
                     lines.append(f"Акции: {shares}")
                     lines.append(f"Вложено: ${invested}" if invested != "-" else "Вложено: -")
-                    lines.append(f"Цель 1: {tp1}")
-                    lines.append(f"Цель 2: {tp2}")
-                    lines.append(f"Стоп: {sl}")
+                    lines.append("")
+                    lines.append(f"🎯 Цель 1 (для позиции {levels}): {tp1} [{tp1_status}]")
+                    lines.append(f"🎯 Цель 2 (для позиции {levels}): {tp2} [{tp2_status}]")
+                    lines.append(f"🛑 Стоп (для позиции {levels}): {sl} [{sl_status}]")
                     lines.append("")
 
             send_message("\n".join(lines))
