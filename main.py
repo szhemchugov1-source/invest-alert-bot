@@ -367,9 +367,13 @@ def check_entry_levels(state, ticker, config, current_price):
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
 
-    available_cash = float(state.get("available_cash", 0) or 0)
+    # Храним последние цены для анти-повтора после рестарта
+    if "last_prices" not in state or not isinstance(state["last_prices"], dict):
+        state["last_prices"] = {}
 
-    # Один общий бюджет на тикер, делим его по уровням
+    prev_price = state["last_prices"].get(ticker)
+
+    available_cash = float(state.get("available_cash", 0) or 0)
     asset_budget = available_cash / max(len(WATCHLIST), 1)
 
     level_weights = {
@@ -387,19 +391,26 @@ def check_entry_levels(state, ticker, config, current_price):
         None
     )
 
+    # Если это первый цикл после рестарта — просто запоминаем цену и не шлём сигнал
+    if prev_price is None:
+        state["last_prices"][ticker] = current_price
+        return False
+
     for level in config.get("levels", []):
         level_key = level["key"]
         level_price = level["price"]
-
         level_amount = round(asset_budget * level_weights.get(level_key, 0), 2)
+
         if level_amount <= 0:
             continue
+
+        crossed_down = prev_price > level_price and current_price <= level_price
 
         # =========================
         # 1) ЕСЛИ СДЕЛКИ ЕЩЁ НЕТ
         # =========================
         if open_trade is None:
-            if current_price <= level_price:
+            if crossed_down:
                 shares_est = round(level_amount / current_price, 4) if current_price > 0 else 0
                 if shares_est <= 0:
                     continue
@@ -455,14 +466,13 @@ def check_entry_levels(state, ticker, config, current_price):
             if not isinstance(levels_hit, list):
                 levels_hit = []
 
-            # Жёстко сохраняем обратно, чтобы список не терялся
             open_trade["levels_hit"] = levels_hit
 
-            # Защита от повторной обработки уровня
+            # Уже был этот уровень — повторно не докупаем
             if level_key in levels_hit:
                 continue
 
-            if current_price <= level_price:
+            if crossed_down:
                 add_shares = round(level_amount / current_price, 4) if current_price > 0 else 0
                 if add_shares <= 0:
                     continue
@@ -513,6 +523,9 @@ def check_entry_levels(state, ticker, config, current_price):
 
                 changed = True
                 break
+
+    # В конце обязательно обновляем последнюю цену
+    state["last_prices"][ticker] = current_price
 
     return changed
 
