@@ -292,64 +292,61 @@ def save_state(state) -> None:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def check_entry_levels(state, ticker, config, current_price) -> bool:
+def check_entry_levels(state, ticker, config, current_price):
     changed = False
-    asset_state = state["assets"][ticker]
-    available_cash = float(state["available_cash"])
 
-    asset_budget = available_cash * ASSET_WEIGHTS[ticker]
+    if "trades" not in state:
+        state["trades"] = {}
 
-    for level in config["levels"]:
+    if ticker not in state["trades"]:
+        state["trades"][ticker] = []
+
+    for level in config.get("levels", []):
         level_key = level["key"]
-        trigger_price = level["price"]
-        label = level["label"]
+        level_price = level["price"]
 
-        amount_usd = asset_budget * LADDER_WEIGHTS[level_key]
-        shares_est = amount_usd / current_price if current_price > 0 else 0
-        shares_est = round(shares_est, 3)
+        # Проверяем, не срабатывал ли уже этот уровень
+        already_triggered = any(
+            t.get("level") == level_key for t in state["trades"][ticker]
+        )
 
-        risk_usd = amount_usd * 0.15
-        risk_percent = (risk_usd / available_cash * 100) if available_cash > 0 else 0
-        cash_after_trade = available_cash - amount_usd
-
-        if amount_usd < MIN_TRADE_USD:
+        if already_triggered:
             continue
 
-        if shares_est < MIN_SHARES:
-            continue
+        # Условие входа
+        if current_price <= level_price:
+            entry_price = current_price
 
-        open_trades = get_open_trades_count(state)
-        if open_trades >= MAX_OPEN_TRADES:
-            continue
-
-        deviation = abs(current_price - trigger_price) / trigger_price
-        if deviation > MAX_DEVIATION:
-            continue
-
-        if current_price <= trigger_price and not asset_state["levels"][level_key]:
-            send_message(
-    f"🟢 BUY SIGNAL\n\n"
-    f"Акция: {ticker}\n"
-    f"Цена входа: {current_price:.2f}\n\n"
-    f"Уровень: {level['key']}\n"
-    f"TP: {config.get('tp', '-')}\n"
-    f"SL: {config.get('sl', '-')}"
-)
-
-            asset_state["levels"][level_key] = True
-            changed = True
+            # === ДВЕ ЦЕЛИ ===
+            tp1 = round(entry_price * 1.03, 2)  # +3%
+            tp2 = round(entry_price * 1.06, 2)  # +6%
+            sl = round(entry_price * 0.97, 2)   # -3%
 
             trade = {
                 "ticker": ticker,
-                "price": round(current_price, 2),
-                "amount": round(amount_usd, 2),
-                "shares": round(shares_est, 3),
-                "level": label,
+                "entry": entry_price,
+                "tp1": tp1,
+                "tp2": tp2,
+                "sl": sl,
+                "level": level_key,
+                "status": "OPEN"
             }
-            state["trades"].append(trade)
 
-        elif current_price > trigger_price and asset_state["levels"][level_key]:
-            asset_state["levels"][level_key] = False
+            state["trades"][ticker].append(trade)
+
+            send_message(
+                f"🟢 BUY SIGNAL\n\n"
+                f"Акция: {ticker}\n"
+                f"Цена входа: {entry_price:.2f}\n\n"
+                f"Уровень: {level_key}\n\n"
+                f"🎯 Цель 1: {tp1}\n"
+                f"Действие: ПРОДАТЬ 50%\n\n"
+                f"🎯 Цель 2: {tp2}\n"
+                f"Действие: ПРОДАТЬ ОСТАТОК\n\n"
+                f"🛑 Стоп: {sl}\n"
+                f"Действие: ПРОДАТЬ ВСЁ"
+            )
+
             changed = True
 
     return changed
