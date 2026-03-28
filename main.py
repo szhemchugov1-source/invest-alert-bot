@@ -185,20 +185,37 @@ def process_telegram_commands(state) -> bool:
             continue
 
         elif text.lower() == "/trades":
-            trades = state.get("trades", [])
+            trades = state.get("trades", {})
 
-            if not trades:
+            has_trades = any(trades.get(ticker) for ticker in trades)
+            if not has_trades:
                 send_message("📭 Сделок пока нет")
                 continue
 
-            msg = "📊 Журнал сделок\n\n"
-            msg += "Тикер | Цена | $ | Акции | Уровень\n"
-            msg += "-" * 35 + "\n"
+            lines = ["📒 Журнал сделок", ""]
 
-            for t in trades[-10:]:
-                msg += f"{t['ticker']} | {t['price']} | {t['amount']} | {t['shares']} | {t['level']}\n"
+            for ticker, ticker_trades in trades.items():
+                if not ticker_trades:
+                    continue
 
-            send_message(msg)
+                for trade in ticker_trades[-5:]:
+                    status = trade.get("status", "UNKNOWN")
+                    level = trade.get("level", "-")
+                    entry = trade.get("entry", "-")
+                    shares = trade.get("shares", "-")
+                    tp1 = trade.get("tp1", "-")
+                    tp2 = trade.get("tp2", "-")
+                    sl = trade.get("sl", "-")
+
+                    lines.append(f"{ticker} | {level} | {status}")
+                    lines.append(f"Вход: {entry}")
+                    lines.append(f"Акции: {shares}")
+                    lines.append(f"Цель 1: {tp1}")
+                    lines.append(f"Цель 2: {tp2}")
+                    lines.append(f"Стоп: {sl}")
+                    lines.append("")
+
+            send_message("\n".join(lines))
             changed = True
             continue
 
@@ -323,14 +340,15 @@ def check_entry_levels(state, ticker, config, current_price):
             sl = round(entry_price * 0.97, 2)   # -3%
 
             trade = {
-                "ticker": ticker,
-                "entry": entry_price,
-                "tp1": tp1,
-                "tp2": tp2,
-                "sl": sl,
-                "level": level_key,
-                "status": "OPEN"
-            }
+    "ticker": ticker,
+    "entry": entry_price,
+    "shares": shares_est,
+    "tp1": tp1,
+    "tp2": tp2,
+    "sl": sl,
+    "level": level_key,
+    "status": "OPEN"
+}
 
             state["trades"][ticker].append(trade)
 
