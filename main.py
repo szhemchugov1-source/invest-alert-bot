@@ -354,6 +354,14 @@ def check_entry_levels(state, ticker, config, current_price):
 
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
+        # ❗ НЕ открываем новую сделку, если уже есть активная
+has_open_trade = any(
+    isinstance(t, dict) and t.get("status") == "OPEN"
+    for t in state["trades"][ticker]
+)
+
+if has_open_trade:
+    return False
 
     available_cash = float(state.get("available_cash", 0) or 0)
 
