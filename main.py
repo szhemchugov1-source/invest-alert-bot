@@ -354,14 +354,15 @@ def check_entry_levels(state, ticker, config, current_price):
 
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
-        # ❗ НЕ открываем новую сделку, если уже есть активная
-has_open_trade = any(
-    isinstance(t, dict) and t.get("status") == "OPEN"
-    for t in state["trades"][ticker]
-)
 
-if has_open_trade:
-    return False
+    # Не открываем новую сделку, если уже есть активная по этому тикеру
+    has_open_trade = any(
+        isinstance(t, dict) and t.get("status") == "OPEN"
+        for t in state["trades"][ticker]
+    )
+
+    if has_open_trade:
+        return False
 
     available_cash = float(state.get("available_cash", 0) or 0)
 
@@ -380,13 +381,12 @@ if has_open_trade:
         if current_price <= level_price:
             entry_price = current_price
 
-            # Примерный объём входа: весь доступный кэш / количество активов
             asset_budget = available_cash / max(len(WATCHLIST), 1)
             shares_est = round(asset_budget / entry_price, 4) if entry_price > 0 else 0
 
-            tp1 = round(entry_price * 1.03, 2)  # +3%
-            tp2 = round(entry_price * 1.06, 2)  # +6%
-            sl = round(entry_price * 0.97, 2)   # -3%
+            tp1 = round(entry_price * 1.03, 2)
+            tp2 = round(entry_price * 1.06, 2)
+            sl = round(entry_price * 0.97, 2)
 
             trade = {
                 "ticker": ticker,
