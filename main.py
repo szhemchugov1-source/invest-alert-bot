@@ -105,6 +105,13 @@ def build_status_message(state):
     cash = state.get("available_cash", 0)
     trades = state.get("trades", {})
 
+    # Защита от старого формата, где trades был списком
+    if isinstance(trades, list):
+        trades = {}
+
+    if not isinstance(trades, dict):
+        trades = {}
+
     open_count = 0
     closed_count = 0
 
@@ -113,10 +120,17 @@ def build_status_message(state):
 
     for ticker in WATCHLIST.keys():
         ticker_trades = trades.get(ticker, [])
+
+        if not isinstance(ticker_trades, list):
+            ticker_trades = []
+
         has_open = False
         total_shares = 0.0
 
         for trade in ticker_trades:
+            if not isinstance(trade, dict):
+                continue
+
             if trade.get("status") == "OPEN":
                 open_count += 1
                 has_open = True
