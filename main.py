@@ -328,18 +328,13 @@ def check_entry_levels(state, ticker, config, current_price) -> bool:
 
         if current_price <= trigger_price and not asset_state["levels"][level_key]:
             send_message(
-                f"🧨 Сигнал по системе\n"
-                f"{config['name']} ({ticker})\n"
-                f"Уровень: {label}\n"
-                f"Текущая цена: {current_price:.2f}\n"
-                f"Цена уровня: {trigger_price:.2f}\n"
-                f"Кэш: ${available_cash:.2f}\n"
-                f"Сумма покупки: ${amount_usd:.2f}\n"
-                f"Акций: {shares_est:.3f}\n"
-                f"Риск сделки: ${risk_usd:.2f} ({risk_percent:.2f}%)\n"
-                f"Кэш после сделки: ${cash_after_trade:.2f}\n"
-                f"\nРешение: 🟢 BUY"
-            )
+    f"🟢 BUY SIGNAL\n\n"
+    f"Акция: {ticker}\n"
+    f"Цена входа: {current_price:.2f}\n\n"
+    f"Уровень: {level['key']}\n"
+    f"TP: {config.get('tp', '-')}\n"
+    f"SL: {config.get('sl', '-')}"
+)
 
             asset_state["levels"][level_key] = True
             changed = True
