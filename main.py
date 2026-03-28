@@ -349,54 +349,64 @@ def check_entry_levels(state, ticker, config, current_price):
     if "trades" not in state:
         state["trades"] = {}
 
+    if isinstance(state["trades"], list):
+        state["trades"] = {}
+
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
+
+    available_cash = float(state.get("available_cash", 0) or 0)
 
     for level in config.get("levels", []):
         level_key = level["key"]
         level_price = level["price"]
 
-        # Проверяем, не срабатывал ли уже этот уровень
         already_triggered = any(
-            t.get("level") == level_key for t in state["trades"][ticker]
+            isinstance(t, dict) and t.get("level") == level_key and t.get("status") == "OPEN"
+            for t in state["trades"][ticker]
         )
 
         if already_triggered:
             continue
 
-        # Условие входа
         if current_price <= level_price:
             entry_price = current_price
 
-            # === ДВЕ ЦЕЛИ ===
+            # Примерный объём входа: весь доступный кэш / количество активов
+            asset_budget = available_cash / max(len(WATCHLIST), 1)
+            shares_est = round(asset_budget / entry_price, 4) if entry_price > 0 else 0
+
             tp1 = round(entry_price * 1.03, 2)  # +3%
             tp2 = round(entry_price * 1.06, 2)  # +6%
             sl = round(entry_price * 0.97, 2)   # -3%
 
             trade = {
-    "ticker": ticker,
-    "entry": entry_price,
-    "shares": shares_est,
-    "tp1": tp1,
-    "tp2": tp2,
-    "sl": sl,
-    "level": level_key,
-    "status": "OPEN"
-}
+                "ticker": ticker,
+                "entry": entry_price,
+                "shares": shares_est,
+                "amount_usd": round(asset_budget, 2),
+                "tp1": tp1,
+                "tp2": tp2,
+                "sl": sl,
+                "level": level_key,
+                "status": "OPEN",
+                "tp1_hit": False,
+                "tp2_hit": False,
+                "sl_hit": False
+            }
 
             state["trades"][ticker].append(trade)
 
             send_message(
                 f"🟢 BUY SIGNAL\n\n"
                 f"Акция: {ticker}\n"
-                f"Цена входа: {entry_price:.2f}\n\n"
-                f"Уровень: {level_key}\n\n"
-                f"🎯 Цель 1: {tp1}\n"
-                f"Действие: ПРОДАТЬ 50%\n\n"
-                f"🎯 Цель 2: {tp2}\n"
-                f"Действие: ПРОДАТЬ ОСТАТОК\n\n"
-                f"🛑 Стоп: {sl}\n"
-                f"Действие: ПРОДАТЬ ВСЁ"
+                f"Текущая цена: {entry_price:.2f}\n"
+                f"Уровень входа: {level_key}\n\n"
+                f"Объём: {shares_est} акций\n"
+                f"Сумма входа: ${asset_budget:.2f}\n\n"
+                f"🎯 Цель 1: {tp1} → ПРОДАТЬ 50%\n"
+                f"🎯 Цель 2: {tp2} → ПРОДАТЬ ОСТАТОК\n"
+                f"🛑 Стоп: {sl} → ПРОДАТЬ ВСЁ"
             )
 
             changed = True
@@ -407,13 +417,17 @@ def check_entry_levels(state, ticker, config, current_price):
 def check_tp_sl(state, ticker, config, current_price):
     changed = False
 
-    if "trades" not in state:
+    trades = state.get("trades", {})
+    if isinstance(trades, list):
         return changed
 
-    if ticker not in state["trades"]:
+    if ticker not in trades:
         return changed
 
-    for trade in state["trades"][ticker]:
+    for trade in trades[ticker]:
+        if not isinstance(trade, dict):
+            continue
+
         if trade.get("status") == "CLOSED":
             continue
 
@@ -428,10 +442,9 @@ def check_tp_sl(state, ticker, config, current_price):
             and not trade.get("tp1_hit", False)
         ):
             send_message(
-                f"🎯 Цель 1 достигнута\n\n"
+                f"🎯 TAKE PROFIT 1\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
-                f"Цель 1: {tp1}\n"
                 f"Действие: ПРОДАТЬ 50%"
             )
             trade["tp1_hit"] = True
@@ -444,10 +457,9 @@ def check_tp_sl(state, ticker, config, current_price):
             and not trade.get("tp2_hit", False)
         ):
             send_message(
-                f"🎯 Цель 2 достигнута\n\n"
+                f"✅ EXIT SIGNAL\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
-                f"Цель 2: {tp2}\n"
                 f"Действие: ПРОДАТЬ ОСТАТОК"
             )
             trade["tp2_hit"] = True
@@ -462,10 +474,9 @@ def check_tp_sl(state, ticker, config, current_price):
             and trade.get("status") != "CLOSED"
         ):
             send_message(
-                f"🛑 Стоп достигнут\n\n"
+                f"🛑 STOP SIGNAL\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
-                f"Стоп: {sl}\n"
                 f"Действие: ПРОДАТЬ ВСЁ"
             )
             trade["sl_hit"] = True
