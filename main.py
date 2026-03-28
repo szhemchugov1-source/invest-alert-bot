@@ -101,32 +101,51 @@ def get_open_trades_count(state) -> int:
     )
 
 
-def build_status_message(state) -> str:
-    available_cash = float(state["available_cash"])
-    open_trades = get_open_trades_count(state)
+def build_status_message(state):
+    cash = state.get("available_cash", 0)
+    trades = state.get("trades", {})
+
+    open_count = 0
+    closed_count = 0
+
+    active_positions = []
+    empty_positions = []
+
+    for ticker, ticker_trades in trades.items():
+        has_open = False
+        total_shares = 0
+
+        for trade in ticker_trades:
+            if trade.get("status") == "OPEN":
+                open_count += 1
+                has_open = True
+                total_shares += float(trade.get("shares", 0))
+
+            elif trade.get("status") == "CLOSED":
+                closed_count += 1
+
+        if has_open:
+            active_positions.append(f"{ticker} — {round(total_shares, 4)} акций")
+        else:
+            empty_positions.append(ticker)
 
     lines = [
         "📊 Статус системы",
-        f"Кэш: ${available_cash:.2f}",
-        f"Макс. открытых сделок: {MAX_OPEN_TRADES}",
-        f"Текущих активных сделок: {open_trades}",
         "",
+        f"💰 Кэш: ${cash:.2f}",
+        f"📂 Открытых сделок: {open_count}",
+        f"📁 Закрытых сделок: {closed_count}",
+        ""
     ]
 
-    for ticker, config in WATCHLIST.items():
-        asset_state = state["assets"][ticker]
+    if active_positions:
+        lines.append("📦 Активные позиции:")
+        lines.extend(active_positions)
+        lines.append("")
 
-        active_labels = []
-        for level in config["levels"]:
-            level_key = level["key"]
-            label = level["label"]
-            if asset_state["levels"].get(level_key, False):
-                active_labels.append(label)
-
-        if active_labels:
-            lines.append(f"{ticker}: {', '.join(active_labels)}")
-        else:
-            lines.append(f"{ticker}: нет активных уровней")
+    if empty_positions:
+        lines.append("📉 Без позиций:")
+        lines.extend(empty_positions)
 
     return "\n".join(lines)
 
