@@ -251,7 +251,6 @@ def process_telegram_commands(state):
                 if not isinstance(ticker_trades, list) or not ticker_trades:
                     continue
 
-                # получаем текущую цену
                 try:
                     current_price = round(get_price(ticker), 2)
                 except Exception:
@@ -308,7 +307,7 @@ def process_telegram_commands(state):
             send_message("\n".join(lines))
             continue
 
-    elif text.lower() == "/positions":
+        elif text.lower() == "/positions":
             trades = state.get("trades", {})
             cash = state.get("available_cash", 0)
 
@@ -382,7 +381,7 @@ def process_telegram_commands(state):
 
             send_message("\n".join(lines))
             continue
-    
+
     return changed
 
 
