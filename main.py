@@ -478,7 +478,6 @@ def check_entry_levels(state, ticker, config, current_price):
     if ticker not in state["trades"]:
         state["trades"][ticker] = []
 
-    # Храним последние цены для анти-повтора после рестарта
     if "last_prices" not in state or not isinstance(state["last_prices"], dict):
         state["last_prices"] = {}
 
@@ -493,7 +492,9 @@ def check_entry_levels(state, ticker, config, current_price):
         "lvl3": 0.30,
     }
 
-    # Ищем открытую сделку по тикеру
+    # Максимально допустимое отклонение для догоняющего сигнала
+    catchup_limit_pct = 0.8
+
     open_trade = next(
         (
             t for t in state["trades"][ticker]
@@ -502,7 +503,7 @@ def check_entry_levels(state, ticker, config, current_price):
         None
     )
 
-    # Если это первый цикл после рестарта — просто запоминаем цену и не шлём сигнал
+    # Первый цикл после рестарта: просто запоминаем цену
     if prev_price is None:
         state["last_prices"][ticker] = current_price
         return False
@@ -515,13 +516,21 @@ def check_entry_levels(state, ticker, config, current_price):
         if level_amount <= 0:
             continue
 
+        # Обычное пересечение сверху вниз
         crossed_down = prev_price > level_price and current_price <= level_price
+
+        # Умный догоняющий сигнал: только если цена не ушла слишком далеко ниже уровня
+        catchup_floor = level_price * (1 - catchup_limit_pct / 100)
+        catchup_trigger = (
+            current_price <= level_price and
+            current_price >= catchup_floor
+        )
 
         # =========================
         # 1) ЕСЛИ СДЕЛКИ ЕЩЁ НЕТ
         # =========================
         if open_trade is None:
-            if crossed_down:
+            if crossed_down or catchup_trigger:
                 shares_est = round(level_amount / current_price, 4) if current_price > 0 else 0
                 if shares_est <= 0:
                     continue
@@ -552,8 +561,12 @@ def check_entry_levels(state, ticker, config, current_price):
 
                 state["trades"][ticker].append(trade)
 
+                signal_type = "🟢 BUY SIGNAL"
+                if catchup_trigger and not crossed_down:
+                    signal_type = "🟢 BUY SIGNAL (догоняющий)"
+
                 send_message(
-                    f"🟢 BUY SIGNAL\n\n"
+                    f"{signal_type}\n\n"
                     f"Акция: {ticker}\n"
                     f"Текущая цена: {current_price:.2f}\n"
                     f"Уровень входа: {level_key}\n\n"
@@ -583,7 +596,7 @@ def check_entry_levels(state, ticker, config, current_price):
             if level_key in levels_hit:
                 continue
 
-            if crossed_down:
+            if crossed_down or catchup_trigger:
                 add_shares = round(level_amount / current_price, 4) if current_price > 0 else 0
                 if add_shares <= 0:
                     continue
@@ -617,8 +630,12 @@ def check_entry_levels(state, ticker, config, current_price):
                 open_trade["level"] = " + ".join(levels_hit)
                 open_trade["levels_hit"] = levels_hit
 
+                signal_type = "🔵 DCA / ДОКУПКА"
+                if catchup_trigger and not crossed_down:
+                    signal_type = "🔵 DCA / ДОКУПКА (догоняющая)"
+
                 send_message(
-                    f"🔵 DCA / ДОКУПКА\n\n"
+                    f"{signal_type}\n\n"
                     f"Акция: {ticker}\n"
                     f"Сработал уровень: {level_key}\n"
                     f"Текущая цена: {current_price:.2f}\n\n"
@@ -635,7 +652,6 @@ def check_entry_levels(state, ticker, config, current_price):
                 changed = True
                 break
 
-    # В конце обязательно обновляем последнюю цену
     state["last_prices"][ticker] = current_price
 
     return changed
