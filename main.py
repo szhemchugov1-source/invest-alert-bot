@@ -308,6 +308,81 @@ def process_telegram_commands(state):
             send_message("\n".join(lines))
             continue
 
+    elif text.lower() == "/positions":
+            trades = state.get("trades", {})
+            cash = state.get("available_cash", 0)
+
+            if isinstance(trades, list) or not isinstance(trades, dict):
+                trades = {}
+
+            lines = [
+                "📊 Активные позиции",
+                "",
+                f"💰 Кэш: ${cash:.2f}",
+                ""
+            ]
+
+            has_open = False
+
+            for ticker, ticker_trades in trades.items():
+                if not isinstance(ticker_trades, list):
+                    continue
+
+                open_trade = next(
+                    (t for t in ticker_trades if isinstance(t, dict) and t.get("status") == "OPEN"),
+                    None
+                )
+
+                if not open_trade:
+                    continue
+
+                has_open = True
+
+                try:
+                    current_price = round(get_price(ticker), 2)
+                except Exception:
+                    current_price = None
+
+                avg_price = open_trade.get("avg_price", open_trade.get("entry", "-"))
+                shares = open_trade.get("total_shares", open_trade.get("shares", "-"))
+                tp1 = open_trade.get("tp1", "-")
+                tp2 = open_trade.get("tp2", "-")
+                sl = open_trade.get("sl", "-")
+
+                profit_text = "Прибыль: -"
+                price_text = "Цена: -"
+
+                try:
+                    avg_price_num = float(avg_price)
+                    shares_num = float(shares)
+
+                    if current_price is not None and avg_price_num > 0:
+                        profit_usd = round((current_price - avg_price_num) * shares_num, 2)
+                        profit_pct = round(((current_price - avg_price_num) / avg_price_num) * 100, 2)
+
+                        sign = "+" if profit_usd >= 0 else ""
+
+                        price_text = f"Цена: {current_price}"
+                        profit_text = f"Прибыль: {sign}${profit_usd} ({sign}{profit_pct}%)"
+                except Exception:
+                    pass
+
+                lines.append(f"{ticker}")
+                lines.append(f"Средняя: {avg_price}")
+                lines.append(price_text)
+                lines.append(profit_text)
+                lines.append("")
+                lines.append(f"Цель 1: {tp1}")
+                lines.append(f"Цель 2: {tp2}")
+                lines.append(f"Стоп: {sl}")
+                lines.append("")
+
+            if not has_open:
+                lines.append("Нет открытых позиций")
+
+            send_message("\n".join(lines))
+            continue
+    
     return changed
 
 
