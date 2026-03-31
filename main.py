@@ -613,7 +613,7 @@ def check_entry_levels(state, ticker, config, current_price):
                     f"🎯 Цель 1: {tp1} → ПРОДАТЬ 50%\n"
                     f"🎯 Цель 2: {tp2} → ПРОДАТЬ ОСТАТОК\n"
                     f"🛑 Стоп: {sl} → ПРОДАТЬ ВСЁ"
-                
+                )
 
                 changed = True
                 break
