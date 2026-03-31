@@ -601,7 +601,8 @@ def check_entry_levels(state, ticker, config, current_price):
                 if catchup_trigger and not crossed_down:
                     signal_type = "🟢 BUY SIGNAL (догоняющий)"
 
-                send_message(
+                send_signal(
+                    state,
                     f"{signal_type}\n\n"
                     f"Акция: {ticker}\n"
                     f"Текущая цена: {current_price:.2f}\n"
@@ -612,7 +613,7 @@ def check_entry_levels(state, ticker, config, current_price):
                     f"🎯 Цель 1: {tp1} → ПРОДАТЬ 50%\n"
                     f"🎯 Цель 2: {tp2} → ПРОДАТЬ ОСТАТОК\n"
                     f"🛑 Стоп: {sl} → ПРОДАТЬ ВСЁ"
-                )
+                
 
                 changed = True
                 break
@@ -670,7 +671,8 @@ def check_entry_levels(state, ticker, config, current_price):
                 if catchup_trigger and not crossed_down:
                     signal_type = "🔵 DCA / ДОКУПКА (догоняющая)"
 
-                send_message(
+                send_signal(
+                    state,
                     f"{signal_type}\n\n"
                     f"Акция: {ticker}\n"
                     f"Сработал уровень: {level_key}\n"
