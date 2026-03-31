@@ -66,6 +66,25 @@ MIN_SHARES = 0.001
 MAX_OPEN_TRADES = 3
 MAX_DEVIATION = 0.01  # 1%
 
+BOT_ACTIVE = True
+
+
+def is_bot_active(state) -> bool:
+    return state.get("bot_active", True)
+
+
+def set_bot_active(state, value: bool) -> None:
+    state["bot_active"] = value
+
+
+def get_bot_status_text(state) -> str:
+    return "▶️ Бот включён" if is_bot_active(state) else "⏸ Бот на паузе"
+
+
+def send_signal(state, text: str) -> None:
+    if is_bot_active(state):
+        send_message(text)
+
 
 def send_message(text: str) -> None:
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
