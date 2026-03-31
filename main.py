@@ -216,19 +216,36 @@ def process_telegram_commands(state):
         if str(CHAT_ID) != chat_id:
             continue
 
-        if text.lower() == "/status":
+        normalized = text.lower()
+
+        if normalized in ["/pause", "pause", "пауза", "/stop", "stop", "стоп"]:
+            set_bot_active(state, False)
+            send_message("⏸ Бот поставлен на паузу.\nРыночные сигналы временно отключены.")
+            continue
+
+        elif normalized in ["/start", "start", "старт"]:
+            set_bot_active(state, True)
+            send_message("▶️ Бот снова включён.\nРыночные сигналы активны.")
+            continue
+
+        elif normalized in ["/botstatus", "botstatus", "статусбот"]:
+            send_message(get_bot_status_text(state))
+            continue
+
+        elif normalized == "/status":
             send_message(build_status_message(state))
             continue
 
-        elif text.lower() == "/status on":
+        elif normalized == "/status on":
             send_message(
                 f"✅ Бот активен\n"
+                f"{get_bot_status_text(state)}\n"
                 f"💰 Кэш: ${state.get('available_cash', 0):.2f}\n"
                 f"📊 Активов: {len(WATCHLIST)}"
             )
             continue
 
-        elif text.lower().startswith("/cash"):
+        elif normalized.startswith("/cash"):
             parts = text.split()
 
             if len(parts) < 2:
@@ -247,7 +264,7 @@ def process_telegram_commands(state):
             send_message(f"✅ Кэш обновлён: ${cash_value:.2f}")
             continue
 
-        elif text.lower() == "/trades":
+        elif normalized == "/trades":
             trades = state.get("trades", {})
             cash = state.get("available_cash", 0)
 
@@ -326,7 +343,7 @@ def process_telegram_commands(state):
             send_message("\n".join(lines))
             continue
 
-        elif text.lower() == "/positions":
+        elif normalized == "/positions":
             trades = state.get("trades", {})
             cash = state.get("available_cash", 0)
 
