@@ -716,7 +716,6 @@ def check_tp_sl(state, ticker, config, current_price):
         tp2 = trade.get("tp2")
         sl = trade.get("sl")
 
-        # Инициализируем флаги предупреждений
         if "tp1_warned" not in trade:
             trade["tp1_warned"] = False
         if "tp2_warned" not in trade:
@@ -724,9 +723,6 @@ def check_tp_sl(state, ticker, config, current_price):
         if "sl_warned" not in trade:
             trade["sl_warned"] = False
 
-        # -------------------------
-        # Почти цель 1
-        # -------------------------
         if (
             tp1 is not None
             and not trade.get("tp1_hit", False)
@@ -735,7 +731,8 @@ def check_tp_sl(state, ticker, config, current_price):
         ):
             remain_pct_tp1 = ((tp1 - current_price) / tp1) * 100
             if remain_pct_tp1 <= 1:
-                send_message(
+                send_signal(
+                    state,
                     f"⚠️ Почти цель 1\n\n"
                     f"Акция: {ticker}\n"
                     f"Текущая цена: {current_price:.2f}\n"
@@ -745,9 +742,6 @@ def check_tp_sl(state, ticker, config, current_price):
                 trade["tp1_warned"] = True
                 changed = True
 
-        # -------------------------
-        # Почти цель 2
-        # -------------------------
         if (
             tp2 is not None
             and not trade.get("tp2_hit", False)
@@ -756,7 +750,8 @@ def check_tp_sl(state, ticker, config, current_price):
         ):
             remain_pct_tp2 = ((tp2 - current_price) / tp2) * 100
             if remain_pct_tp2 <= 1:
-                send_message(
+                send_signal(
+                    state,
                     f"⚠️ Почти цель 2\n\n"
                     f"Акция: {ticker}\n"
                     f"Текущая цена: {current_price:.2f}\n"
@@ -766,9 +761,6 @@ def check_tp_sl(state, ticker, config, current_price):
                 trade["tp2_warned"] = True
                 changed = True
 
-        # -------------------------
-        # Почти стоп
-        # -------------------------
         if (
             sl is not None
             and not trade.get("sl_hit", False)
@@ -777,7 +769,8 @@ def check_tp_sl(state, ticker, config, current_price):
         ):
             remain_pct_sl = ((current_price - sl) / sl) * 100
             if remain_pct_sl <= 1:
-                send_message(
+                send_signal(
+                    state,
                     f"⚠️ Почти стоп\n\n"
                     f"Акция: {ticker}\n"
                     f"Текущая цена: {current_price:.2f}\n"
@@ -787,15 +780,13 @@ def check_tp_sl(state, ticker, config, current_price):
                 trade["sl_warned"] = True
                 changed = True
 
-        # -------------------------
-        # Цель 1
-        # -------------------------
         if (
             tp1 is not None
             and current_price >= tp1
             and not trade.get("tp1_hit", False)
         ):
-            send_message(
+            send_signal(
+                state,
                 f"🎯 TAKE PROFIT 1\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
@@ -804,15 +795,13 @@ def check_tp_sl(state, ticker, config, current_price):
             trade["tp1_hit"] = True
             changed = True
 
-        # -------------------------
-        # Цель 2
-        # -------------------------
         if (
             tp2 is not None
             and current_price >= tp2
             and not trade.get("tp2_hit", False)
         ):
-            send_message(
+            send_signal(
+                state,
                 f"✅ EXIT SIGNAL\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
@@ -822,16 +811,14 @@ def check_tp_sl(state, ticker, config, current_price):
             trade["status"] = "CLOSED"
             changed = True
 
-        # -------------------------
-        # Стоп
-        # -------------------------
         if (
             sl is not None
             and current_price <= sl
             and not trade.get("sl_hit", False)
             and trade.get("status") != "CLOSED"
         ):
-            send_message(
+            send_signal(
+                state,
                 f"🛑 STOP SIGNAL\n\n"
                 f"Акция: {ticker}\n"
                 f"Текущая цена: {current_price:.2f}\n"
