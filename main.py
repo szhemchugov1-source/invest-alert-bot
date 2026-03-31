@@ -82,8 +82,26 @@ def get_bot_status_text(state) -> str:
 
 
 def send_signal(state, text: str) -> None:
-    if is_bot_active(state):
-        send_message(text)
+    if not is_bot_active(state):
+        return
+
+    if not is_signal_window_open():
+        return
+
+    send_message(text)
+
+
+def is_signal_window_open() -> bool:
+    from datetime import datetime, time, timedelta, timezone
+
+    belarus_tz = timezone(timedelta(hours=3))
+    now = datetime.now(belarus_tz).time()
+
+    start_time = time(15, 30)   # 15:30
+    end_time = time(1, 0)       # 01:00
+
+    # Окно через полночь
+    return now >= start_time or now <= end_time
 
 
 def send_message(text: str) -> None:
@@ -230,6 +248,25 @@ def process_telegram_commands(state):
 
         elif normalized in ["/botstatus", "botstatus", "статусбот"]:
             send_message(get_bot_status_text(state))
+            continue
+
+        elif normalized in ["/forcecheck", "forcecheck", "проверить", "форсчек"]:
+            send_message("🔎 Принудительная проверка рынка...")
+            for ticker, config in WATCHLIST.items():
+                try:
+                    current_price = get_price(ticker)
+                    print(f"FORCECHECK {ticker}: {current_price:.2f}")
+
+                    if check_entry_levels(state, ticker, config, current_price):
+                        changed = True
+
+                    if check_tp_sl(state, ticker, config, current_price):
+                        changed = True
+
+                except Exception as e:
+                    print(f"Ошибка forcecheck {ticker}: {e}")
+
+            send_message("✅ Принудительная проверка завершена.")
             continue
 
         elif normalized == "/status":
